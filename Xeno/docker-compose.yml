@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  server:
+    image: ubuntu:latest
+    command: ["sleep", "infinity"]  # Keeps the container running
+    networks:
+      - mynetwork
+
+  router:
+    image: ubuntu:latest
+    command: ["sleep", "infinity"]  # Placeholder for routing logic
+    networks:
+      - mynetwork
+
+  client1:
+    image: ubuntu:latest
+    command: ["sleep", "infinity"]
+    networks:
+      - mynetwork
+
+  client2:
+    image: ubuntu:latest
+    command: ["sleep", "infinity"]
+    networks:
+      - mynetwork
+
+  app:  # Add your Flask app service here
+    build: .
+    command: python app.py
+    networks:
+      - mynetwork
+    ports:
+      - "5000:5000"  # Map port 5000 to the host
+
+networks:
+  mynetwork:
+    driver: bridge
