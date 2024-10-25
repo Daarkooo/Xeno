@@ -1,38 +1,33 @@
 import gym
 from gym import spaces
 import numpy as np
-
-import gym
-from gym import spaces
-import numpy as np
+import pandas as pd
+from stable_baselines3 import PPO
 
 class SatelliteBandwidthEnv(gym.Env):
     def __init__(self, data, total_bandwidth=10000, cir=1000):
         super(SatelliteBandwidthEnv, self).__init__()
         self.data = data
-        self.num_users = len(data)
+        self.num_users = 10  # Fixed number of users
         self.total_bandwidth = total_bandwidth
         self.cir = cir
-        self.remaining_bandwidth = total_bandwidth - self.num_users * cir
-        self.time_steps = 288  # 24 hours, 5-minute intervals
         self.state = np.zeros((self.num_users, 5))
+        self.time_step = 0  # Initialize time step
 
         self.observation_space = spaces.Box(low=0, high=np.inf, shape=(self.num_users, 5), dtype=np.float32)
         self.action_space = spaces.Box(low=cir, high=total_bandwidth, shape=(self.num_users,), dtype=np.float32)
 
-    def reset(self):
+    def reset(self, time_step=0):
+        self.time_step = time_step
         self.state = np.zeros((self.num_users, 5))
         self.state[:, 0] = self.cir  # Set initial MIR to CIR for each user
-        
-        # Assign requested bandwidth from the dataset
-        requested_bandwidths = self.data['BW_REQUESTED'].values
+
+        # Get requested bandwidths for the current time step
+        requested_bandwidths = self.data.iloc[self.time_step * self.num_users:(self.time_step + 1) * self.num_users]['BW_REQUESTED'].values
         self.state[:, 1] = requested_bandwidths
         
-        self.remaining_bandwidth = self.total_bandwidth - self.num_users * self.cir
-        self.time_steps = 288
         return self.state
 
-    
     def step(self, action):
         for i in range(self.num_users):
             requested_bandwidth = self.state[i, 1]
@@ -44,17 +39,15 @@ class SatelliteBandwidthEnv(gym.Env):
         mir_adjustments = np.clip(action, self.cir, self.total_bandwidth)
         total_allocated_bandwidth = np.sum(mir_adjustments)
 
-        if total_allocated_bandwidth <= self.remaining_bandwidth:
+        if total_allocated_bandwidth <= self.total_bandwidth:
             for i in range(self.num_users):
                 self.state[i, 0] = mir_adjustments[i]
                 self.state[i, 2] += mir_adjustments[i]
-            self.remaining_bandwidth -= total_allocated_bandwidth
 
         reward = self._calculate_reward()
-        self.time_steps -= 1
-        done = self.time_steps == 0
+        self.time_step += 1  # Move to the next time step
+        done = self.time_step >= (len(self.data) // self.num_users)  # Check if time steps exhausted
         return self.state, reward, done, {}
-
 
     def _calculate_reward(self):
         efficiency_reward = 0
@@ -86,27 +79,22 @@ class SatelliteBandwidthEnv(gym.Env):
         return efficiency_reward - total_penalty
 
 
+# Load your train and test data
+train_df = pd.read_csv('train_data.csv',sep=';')
+test_df = pd.read_csv('test_data.csv',sep=';')  
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_util import make_vec_env
+train_df['Date'] = pd.to_datetime(train_df['Date'], format='%d/%m/%Y %H:%M')
+test_df['Date'] = pd.to_datetime(test_df['Date'], format='%d/%m/%Y %H:%M')
 
-# Test environment initialization
-env = SatelliteBandwidthEnv()
-initial_state = env.reset()
+train_df['Hour'] = train_df['Date'].dt.hour
+test_df['Hour'] = test_df['Date'].dt.hour
 
-print("Initial State:")
-print(initial_state)
-
-
-# Example of manually stepping through the environment
-# action = np.random.uniform(low=1000, high=5000, size=(env.num_users,))
-# next_state, reward, done, info = env.step(action)
-
-# print("Next State:")
-# print(next_state)
-# print("Reward:", reward)
+hourly_usage = train_df.groupby('Hour')['BW_REQUESTED'].sum()
 
 
+
+# Initialize the environment for training
+env = SatelliteBandwidthEnv(data=train_df)
 
 # Train the PPO model
 model = PPO("MlpPolicy", env, learning_rate=0.001, n_steps=256, verbose=1)
@@ -115,13 +103,13 @@ model.learn(total_timesteps=50000)
 # Save the model after training
 model.save("ppo_satellite_bandwidth")
 
-
 # Load the trained model (optional if you've already trained)
 model = PPO.load("ppo_satellite_bandwidth")
 
-# Test the trained agent
-obs = env.reset()
+# Test the trained agent with test data
+test_env = SatelliteBandwidthEnv(data=test_df)
+obs = test_env.reset()git
 for i in range(100):
     action, _states = model.predict(obs)
-    obs, reward, done, info = env.step(action)
+    obs, reward, done, info = test_env.step(action)
     print(f"Step {i} - Reward: {reward}")
