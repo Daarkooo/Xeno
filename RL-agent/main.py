@@ -108,7 +108,7 @@ model = PPO.load("ppo_satellite_bandwidth")
 
 # Test the trained agent with test data
 test_env = SatelliteBandwidthEnv(data=test_df)
-obs = test_env.reset()git
+obs = test_env.reset()
 for i in range(100):
     action, _states = model.predict(obs)
     obs, reward, done, info = test_env.step(action)
