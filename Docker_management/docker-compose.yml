@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  server:
+    image: ubuntu:latest
+    command: ["iperf", "-s"]  # Start iperf server
+    networks:
+      - xeno_network
+    build:
+      context: .  # Specify the build context
+
+  router:
+    image: ubuntu:latest
+    command: ["sleep", "infinity"]  # Placeholder for routing logic
+    networks:
+      - xeno_network
+
+  client1:
+    build:
+      context: .  # Build from the Dockerfile in the current directory
+    command: ["sleep", "infinity"]
+    networks:
+      - xeno_network
+
+  client2:
+    build:
+      context: .  # Build from the Dockerfile in the current directory
+    command: ["sleep", "infinity"]
+    networks:
+      - xeno_network
+
+  app:  # Add my Flask app service 
+    build:
+      context: .  # Build from the Dockerfile in the current directory
+    command: python app.py
+    networks:
+      - xeno_network
+    ports:
+      - "5000:5000"  # Map port 5000 to the host
+
+networks:
+  xeno_network:
+    driver: bridge

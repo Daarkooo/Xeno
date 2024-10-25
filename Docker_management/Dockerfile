@@ -1,5 +1,8 @@
-# Use the official Python image from the Docker Hub
+# Use the official Python 3.9-slim image as the base image
 FROM python:3.9-slim
+
+# Update package list and install iperf
+RUN apt-get update && apt-get install -y iperf && apt-get clean
 
 # Set the working directory
 WORKDIR /app
@@ -7,7 +10,7 @@ WORKDIR /app
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install dependencies
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your application code
