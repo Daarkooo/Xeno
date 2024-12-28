@@ -193,28 +193,28 @@ train_df = train_df.sort_values('Date')
 test_env = SatelliteBandwidthEnv(data=train_df)
 
 # Load the trained model
-model = PPO.load("ppo_satellite_bandwidthX")
+model = PPO.load("ppo_satellite_bandwidth")
 
 # Reset the environment to start a new episode
 obs = test_env.reset(time_step=0)
 
 print("Testing the trained agent...\n")
 
-NUM_EPOCHS = 10
+#NUM_EPOCHS = 10
 
 # Run a simple episode and print rewards for a specified number of steps
-for epoch in range(NUM_EPOCHS):  # Change the number of epochs if needed
-    obs = test_env.reset(time_step=0)  # Reset the environment for a new episode
-    for i in range(len(train_df)//10):  # Change the number of steps if needed
-        action, _states = model.predict(obs[:, :5])  # Predict action from the model
-        obs, reward, done, info = test_env.step(action)  # Take action in the environment
-        print(f"Step {i} - Reward: {reward:.2f}")
-        # average effiency
+#for epoch in range(NUM_EPOCHS):  # Change the number of epochs if needed
+obs = test_env.reset(time_step=0)  # Reset the environment for a new episode
+for i in range(len(train_df)//10):  # Change the number of steps if needed
+    action, _states = model.predict(obs[:, :5])  # Predict action from the model
+    obs, reward, done, info = test_env.step(action)  # Take action in the environment
+    print(f"Step {i} - Reward: {reward:.2f}")
+    # average effiency
 
-        # Check if the episode is done
-        if done:
-            print("Episode finished!")
-            break
+    # Check if the episode is done
+    if done:
+        print("Episode finished!")
+        break
 
 print(test_env.R_efficiency_avg/test_env.N)
 
